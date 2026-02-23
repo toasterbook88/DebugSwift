@@ -6,13 +6,13 @@
 //
 
 import UIKit
-import SQLite3
 
 @MainActor
 final class DatabaseBrowserViewController: BaseController {
     
     // MARK: - Properties
     
+    private let allowedTypes: Set<DatabaseType>?
     private let viewModel: DatabaseBrowserViewModel
     private var searchController: UISearchController!
     
@@ -25,9 +25,19 @@ final class DatabaseBrowserViewController: BaseController {
         return table
     }()
 
+    private lazy var emptyStateLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 15, weight: .regular)
+        return label
+    }()
+
     // MARK: - Initialization
 
     init(allowedTypes: Set<DatabaseType>? = nil) {
+        self.allowedTypes = allowedTypes
         self.viewModel = DatabaseBrowserViewModel(allowedTypes: allowedTypes)
         super.init()
     }
@@ -42,6 +52,7 @@ final class DatabaseBrowserViewController: BaseController {
         super.viewDidLoad()
         setup()
         viewModel.loadDatabaseFiles()
+        reloadDataUI()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -70,7 +81,11 @@ private extension DatabaseBrowserViewController {
     }
     
     func setupNavigation() {
-        title = "Database Browser"
+        if allowedTypes == [.coreData] {
+            title = "Core Data Browser"
+        } else {
+            title = "Database Browser"
+        }
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .refresh,
             target: self,
@@ -89,7 +104,37 @@ private extension DatabaseBrowserViewController {
     
     @objc func refreshDatabases() {
         viewModel.loadDatabaseFiles()
+        reloadDataUI()
+    }
+
+    func reloadDataUI() {
         tableView.reloadData()
+        updateEmptyState()
+    }
+
+    func updateEmptyState() {
+        let isEmpty = viewModel.filteredDatabases.isEmpty
+        guard isEmpty else {
+            tableView.backgroundView = nil
+            tableView.separatorStyle = .singleLine
+            return
+        }
+
+        if viewModel.databases.isEmpty {
+            if allowedTypes == [.coreData] {
+                emptyStateLabel.text = "No Core Data stores were found."
+            } else {
+                emptyStateLabel.text = "No databases were found."
+            }
+        } else if let text = searchController.searchBar.text,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            emptyStateLabel.text = "No results for \"\(text)\"."
+        } else {
+            emptyStateLabel.text = "No databases available."
+        }
+
+        tableView.backgroundView = emptyStateLabel
+        tableView.separatorStyle = .none
     }
 }
 
@@ -137,7 +182,7 @@ extension DatabaseBrowserViewController: UITableViewDelegate {
 extension DatabaseBrowserViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         viewModel.filterDatabases(with: searchController.searchBar.text)
-        tableView.reloadData()
+        reloadDataUI()
     }
 }
 
