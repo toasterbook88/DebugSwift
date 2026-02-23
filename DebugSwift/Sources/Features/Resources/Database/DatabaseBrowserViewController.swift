@@ -13,7 +13,7 @@ final class DatabaseBrowserViewController: BaseController {
     
     // MARK: - Properties
     
-    private let viewModel = DatabaseBrowserViewModel()
+    private let viewModel: DatabaseBrowserViewModel
     private var searchController: UISearchController!
     
     private lazy var tableView: UITableView = {
@@ -24,6 +24,17 @@ final class DatabaseBrowserViewController: BaseController {
         table.register(DatabaseFileCell.self, forCellReuseIdentifier: "DatabaseFileCell")
         return table
     }()
+
+    // MARK: - Initialization
+
+    init(allowedTypes: Set<DatabaseType>? = nil) {
+        self.viewModel = DatabaseBrowserViewModel(allowedTypes: allowedTypes)
+        super.init()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     // MARK: - Lifecycle
     
@@ -203,4 +214,4 @@ final class DatabaseFileCell: UITableViewCell {
         sizeLabel.text = database.formattedSize
         iconImageView.image = database.type.icon
     }
-} 
+}
